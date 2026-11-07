@@ -1,0 +1,9 @@
+# Normalize line endings. Text is stored as LF in the repo and checked out as LF
+# everywhere (so the shell launchers keep working on Linux/macOS), except the
+# Windows-only launchers which stay CRLF. Images are binary.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.vbs text eol=crlf
+*.png binary
+*.ico binary
+*.svgz binary

@@ -1,0 +1,25 @@
+Update Manager — platform launchers
+===================================
+
+The app itself is one cross-platform file. Everywhere you can simply run:
+
+    python updatemanager.py        (or python3 updatemanager.py)
+
+These launchers are optional double-click conveniences. Each one is clearly
+labelled in its header with the operating system it is dedicated to. They all
+end up invoking the same updatemanager.py, and they auto-activate the shared
+virtualenv at <Crypto>/env if it exists.
+
+  linux/
+    updatemanager.sh        Bash launcher (Linux).
+    UpdateManager.desktop   Application-menu entry (Linux). Replace {INSTALL_DIR}
+                            and copy to ~/.local/share/applications.
+
+  macos/
+    UpdateManager.command   Double-clickable launcher (macOS). Run once:
+                            chmod +x UpdateManager.command
+
+  windows/
+    UpdateManager.bat       Command-Prompt launcher (Windows), no console window.
+    UpdateManager.vbs       Fully silent launcher (Windows) — recommended for a
+                            desktop/Start-menu shortcut.

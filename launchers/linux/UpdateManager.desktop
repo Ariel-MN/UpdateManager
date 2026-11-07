@@ -1,0 +1,15 @@
+[Desktop Entry]
+# =============================================================================
+#  Update Manager menu entry  --  DEDICATED TO: LINUX  (freedesktop .desktop)
+#  Replace {INSTALL_DIR} with the absolute path to the UpdateManager folder,
+#  then copy this file to ~/.local/share/applications (per user) or
+#  /usr/share/applications (system-wide).
+# =============================================================================
+Version=1.0
+Type=Application
+Terminal=false
+Name=Update Manager
+Comment=Keep your apps up to date
+Icon={INSTALL_DIR}/img/Logo.png
+Exec=bash {INSTALL_DIR}/launchers/linux/updatemanager.sh
+Categories=Utility;

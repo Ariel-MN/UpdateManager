@@ -1,0 +1,24 @@
+# Update Manager — configuration template.
+# Copy this file to "config.ini" and adjust it. The GitHub TOKEN does NOT go here:
+# it is stored separately (see README -> "Token / security"):
+#   - env var UPDATEMANAGER_GITHUB_TOKEN, or
+#   - secrets.ini in this project folder (gitignored).
+# A token is required for PRIVATE repos (and raises the API rate limit for public ones).
+
+[GitHub]
+username = your-github-username
+
+[UpdateManager]
+# Window title shown when the app opens.
+title = Update Manager
+# Heading shown at the top inside the window.
+heading = Application Library
+# Ask to self-update on startup when a newer release of Update Manager exists.
+check_on_startup = true
+
+# One [AppN] section per managed app. "name" must equal the GitHub repo name.
+# Leave "version" empty for an app that is not installed yet (the button shows "Install").
+[App1]
+name = ExampleApp
+version =
+url = https://github.com/your-github-username/ExampleApp/releases/latest

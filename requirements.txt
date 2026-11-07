@@ -1,0 +1,4 @@
+customtkinter==5.2.2
+CTkMessagebox==2.7
+pillow==10.3.0
+requests==2.32.3

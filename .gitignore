@@ -1,0 +1,25 @@
+# Secrets — the GitHub token lives in the per-user config dir, never in the repo.
+secrets.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments (the shared env lives OUTSIDE the repo)
+env/
+venv/
+.venv/
+
+# Update scratch space
+etc/update.json
+etc/~tmp/
+etc/.tmp/
+
+# Generated shortcuts
+*.lnk
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
