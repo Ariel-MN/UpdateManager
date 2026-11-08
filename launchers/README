@@ -16,11 +16,11 @@ and launchers use the app icon (Favicon.ico on Windows, Logo.png elsewhere).
 
   linux/
     updatemanager.sh            Normal launcher (no terminal).
-    UpdateManager.desktop       Application-menu entry — GUI only (Terminal=false),
-                                icon = img/Logo.png. Replace {INSTALL_DIR} and copy
-                                to ~/.local/share/applications.
-    updatemanager-debug.sh      Debug launcher — runs in the terminal, shows errors.
-    UpdateManager-Debug.desktop Debug menu entry — opens a terminal (Terminal=true).
+    UpdateManager.desktop       Application-menu entry template — GUI only (Terminal=false),
+                                icon = img/Logo.png. The installer resolves {INSTALL_DIR} and
+                                copies it to ~/.local/share/applications (shown in the menu).
+    updatemanager-debug.sh      Debug launcher — runs in the terminal, shows errors (no menu
+                                entry; run it from a terminal when you need to see output).
 
   macos/
     UpdateManager.command       Normal launcher (double-click). First run:

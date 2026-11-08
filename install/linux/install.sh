@@ -78,17 +78,20 @@ PY
 
 # --- install application-menu entries with the real paths --------------------
 # The launchers/linux/*.desktop files are TEMPLATES (they contain {INSTALL_DIR} and would not
-# work if launched directly). Here we generate working copies with the real path into the
-# user's applications folder, executable, so "Update Manager" shows up in the menu (GUI only).
-say "Installing menu entries ..."
+# work if launched directly). Here we generate a working copy with the real path into the user's
+# applications folder, executable, so a single "Update Manager" shows up in the menu (GUI only).
+# The Debug entry is intentionally NOT added to the menu (it's a troubleshooting tool, run from a
+# terminal); a stale one from older installs is cleaned up here and by the uninstaller.
+say "Installing menu entry ..."
 APPS_DIR="$HOME/.local/share/applications"
 mkdir -p "$APPS_DIR"
-for tpl in launchers/linux/UpdateManager.desktop launchers/linux/UpdateManager-Debug.desktop; do
-  [ -f "$tpl" ] || continue
-  out="$APPS_DIR/$(basename "$tpl")"
+rm -f "$APPS_DIR/UpdateManager-Debug.desktop"   # remove the old second entry if present
+tpl="launchers/linux/UpdateManager.desktop"
+if [ -f "$tpl" ]; then
+  out="$APPS_DIR/UpdateManager.desktop"
   sed "s#{INSTALL_DIR}#$APP_DIR#g" "$tpl" > "$out"
   chmod +x "$out"
-done
+fi
 chmod +x launchers/linux/*.desktop 2>/dev/null || true   # also mark the in-folder templates
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true
 
