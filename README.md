@@ -133,9 +133,13 @@ everything; see `install/README`):
 
 | OS | Command |
 |----|---------|
-| Linux / Raspberry Pi | `chmod +x install/linux/install.sh && install/linux/install.sh` |
-| macOS | `chmod +x install/macos/install.command && ./install/macos/install.command` |
+| Linux / Raspberry Pi | `bash install/linux/install.sh` |
+| macOS | `bash install/macos/install.command` |
 | Windows | `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1` |
+
+Running them with `bash` needs no execute bit. A fresh `git clone` already keeps the scripts
+executable; a `.zip` download or a copy from Windows can drop that bit, but the installer
+restores it (for itself and the launchers) on first run.
 
 Or manually:
 

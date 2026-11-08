@@ -10,6 +10,10 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "$0")/../.." && pwd)"   # UpdateManager/
 cd "$APP_DIR"
 
+# A .zip download or a copy from Windows can drop the executable bit. Restore it for the
+# installer and the launchers, so running via `bash install.command` is always enough.
+chmod +x install/macos/install.command launchers/macos/*.command 2>/dev/null || true
+
 say()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[33m%s\033[0m\n' "$*"; }
 die()  { printf '\n\033[31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
