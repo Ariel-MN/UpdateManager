@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  Update Manager launcher  --  DEDICATED TO: LINUX  (bash)
-#  Runs `python3 updatemanager.py`. Uses the shared virtualenv at
-#  <Crypto>/env if it exists, otherwise the system python3.
+#  Runs updatemanager.py using a virtualenv if one exists: the repo-local env/
+#  first, then a shared <parent>/env; otherwise the system python3.
 # =============================================================================
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"          # launchers/linux
 APP_DIR="$(cd "$HERE/../.." && pwd)"           # UpdateManager/
 
 # Prevent duplicate instances.
-if pgrep -f "updatemanager.py" >/dev/null 2>&1; then
+if pgrep -f "[u]pdatemanager.py" >/dev/null 2>&1; then
   exit 0
 fi
 
-if [ -f "$APP_DIR/../env/bin/activate" ]; then
-  # shellcheck disable=SC1091
-  source "$APP_DIR/../env/bin/activate"
-fi
+# Activate a virtualenv if present (repo-local env/ first, then a shared ../env).
+PY="python3"
+for VENV in "$APP_DIR/env" "$APP_DIR/../env"; do
+  if [ -f "$VENV/bin/activate" ]; then
+    # shellcheck disable=SC1091
+    source "$VENV/bin/activate"
+    PY="python"
+    break
+  fi
+done
 
-exec python3 "$APP_DIR/updatemanager.py"
+exec "$PY" "$APP_DIR/updatemanager.py"

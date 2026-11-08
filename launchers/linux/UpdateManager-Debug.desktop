@@ -1,0 +1,16 @@
+[Desktop Entry]
+# =============================================================================
+#  Update Manager DEBUG menu entry  --  DEDICATED TO: LINUX
+#  Opens a terminal and shows all output/errors (Terminal=true). Use this when
+#  the normal launcher shows nothing, to see what went wrong.
+#  Replace {INSTALL_DIR} and copy to ~/.local/share/applications.
+# =============================================================================
+Version=1.0
+Type=Application
+Terminal=true
+Name=Update Manager (Debug)
+Comment=Run Update Manager in a terminal to see errors
+Icon={INSTALL_DIR}/img/Logo.png
+Exec=bash {INSTALL_DIR}/launchers/linux/updatemanager-debug.sh
+Categories=Utility;
+StartupWMClass=Updatemanager

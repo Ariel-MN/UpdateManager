@@ -13,3 +13,5 @@ Comment=Keep your apps up to date
 Icon={INSTALL_DIR}/img/Logo.png
 Exec=bash {INSTALL_DIR}/launchers/linux/updatemanager.sh
 Categories=Utility;
+StartupNotify=false
+StartupWMClass=Updatemanager

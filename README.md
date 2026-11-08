@@ -52,6 +52,8 @@ username = Ariel-MN
 title = Update Manager
 # Heading shown at the top inside the window.
 heading = Application Library
+# UI scale: "auto"/blank = automatic DPI scaling; a number (1.5, 2.0) enlarges on HiDPI/4K.
+ui_scale = auto
 # Self-update check on startup.
 check_on_startup = true
 
@@ -126,16 +128,41 @@ itself is kept, only the secret leaves it.
 
 ## Install (dependencies)
 
+Easiest — run the installer for your OS (creates a virtualenv in `env/` and installs
+everything; see `install/README`):
+
+| OS | Command |
+|----|---------|
+| Linux / Raspberry Pi | `chmod +x install/linux/install.sh && install/linux/install.sh` |
+| macOS | `chmod +x install/macos/install.command && ./install/macos/install.command` |
+| Windows | `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1` |
+
+Or manually:
+
 ```bash
 python -m venv env
 # Linux/macOS: source env/bin/activate   |   Windows: env\Scripts\activate
 pip install -r requirements.txt
 ```
 
+> **Raspberry Pi / HiDPI note:** if `pip install` fails building **Pillow**, the Linux
+> installer falls back to the system Pillow (`sudo apt install python3-pil python3-pil.imagetk`)
+> inside a `--system-site-packages` venv. `requirements.txt` leaves Pillow unpinned so pip can
+> pick a version with a prebuilt wheel for your Python.
+
 ## Launchers
 
 Optional double-click launchers live in `launchers/`, one set per OS, each labelled with
-its target system. See `launchers/README`.
+its target system. They auto-activate the `env/` virtualenv (repo-local first, then a shared
+`../env`). See `launchers/README`.
+
+## Troubleshooting
+
+- **Window too small / unreadable on a 4K screen:** set `ui_scale` under `[UpdateManager]` in
+  `config.ini` to a number (e.g. `ui_scale = 2.0`). Automatic DPI scaling reads as 1.0 on some
+  Linux/HiDPI sessions, which makes everything tiny.
+- **`.desktop` flashes a terminal and shows no window:** the app crashed because its Python has no
+  dependencies. Run the installer so a `env/` exists next to the app; the launchers use it.
 
 ## License
 

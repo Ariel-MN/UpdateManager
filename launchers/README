@@ -7,19 +7,29 @@ The app itself is one cross-platform file. Everywhere you can simply run:
 
 These launchers are optional double-click conveniences. Each one is clearly
 labelled in its header with the operating system it is dedicated to. They all
-end up invoking the same updatemanager.py, and they auto-activate the shared
-virtualenv at <Crypto>/env if it exists.
+invoke the same updatemanager.py and auto-activate the virtualenv if present
+(the program's own env/ first, then a shared ../env).
+
+Each OS has a NORMAL launcher (no console, GUI only) and a DEBUG launcher
+(opens a console and shows all output/errors; pauses at the end). The window
+and launchers use the app icon (Favicon.ico on Windows, Logo.png elsewhere).
 
   linux/
-    updatemanager.sh        Bash launcher (Linux).
-    UpdateManager.desktop   Application-menu entry (Linux). Replace {INSTALL_DIR}
-                            and copy to ~/.local/share/applications.
+    updatemanager.sh            Normal launcher (no terminal).
+    UpdateManager.desktop       Application-menu entry — GUI only (Terminal=false),
+                                icon = img/Logo.png. Replace {INSTALL_DIR} and copy
+                                to ~/.local/share/applications.
+    updatemanager-debug.sh      Debug launcher — runs in the terminal, shows errors.
+    UpdateManager-Debug.desktop Debug menu entry — opens a terminal (Terminal=true).
 
   macos/
-    UpdateManager.command   Double-clickable launcher (macOS). Run once:
-                            chmod +x UpdateManager.command
+    UpdateManager.command       Normal launcher (double-click). First run:
+                                chmod +x UpdateManager.command
+    UpdateManager-Debug.command Debug launcher — opens Terminal, shows errors.
 
   windows/
-    UpdateManager.bat       Command-Prompt launcher (Windows), no console window.
-    UpdateManager.vbs       Fully silent launcher (Windows) — recommended for a
-                            desktop/Start-menu shortcut.
+    UpdateManager.vbs           Fully silent launcher (no console) — recommended.
+    UpdateManager.bat           Command-Prompt launcher (no console window).
+    UpdateManager-Debug.bat     Debug launcher — keeps the console open, shows errors.
+    CreateShortcut.vbs          Creates a Desktop shortcut to UpdateManager.vbs with
+                                Favicon.ico as its icon (double-click once).

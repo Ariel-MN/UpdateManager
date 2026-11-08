@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import ast
 import configparser
+import hashlib
 import json
 import os
 import platform
@@ -30,22 +31,24 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import zipfile
 from pathlib import Path
 from shutil import copy2
+from urllib.parse import quote
 
 import requests
 from customtkinter import (
-    CTk, CTkButton, CTkFrame, CTkImage, CTkLabel, CTkScrollableFrame,
-    get_appearance_mode, set_appearance_mode,
+    CTk, CTkButton, CTkFrame, CTkImage, CTkLabel, CTkScrollableFrame, ThemeManager,
+    get_appearance_mode, set_appearance_mode, set_widget_scaling, set_window_scaling,
 )
 from CTkMessagebox import CTkMessagebox
-from PIL import Image
+from PIL import Image, ImageDraw
 
 # ── Identity ──────────────────────────────────────────────────────────────────────────
 # Current version of Update Manager itself. Self-update compares this against the latest
 # release tag of SELF_REPO; a new release must bump this value in the shipped file.
-__version__ = "v1.0.0"
+__version__ = "v1.0.1"
 SELF_REPO = "UpdateManager"
 APP_TITLE = "Update Manager"
 APP_HEADING = "Application Library"
@@ -53,6 +56,8 @@ APP_HEADING = "Application Library"
 # ── Paths ─────────────────────────────────────────────────────────────────────────────
 APP_DIR = Path(__file__).resolve().parent
 IMG_DIR = APP_DIR / "img"
+# Downloaded managed-app icons land here (gitignored); img/ "fills itself".
+ICON_CACHE = IMG_DIR / ".cache"
 # Managed apps live next to this folder (…/Crypto/UpdateManager, …/Crypto/AutoClicker, …).
 APPS_ROOT = APP_DIR.parent
 CONFIG_PATH = APP_DIR / "config.ini"
@@ -156,6 +161,8 @@ def parse_apps(config: configparser.ConfigParser) -> list[dict]:
                 "name": config.get(section, "name", fallback=section),
                 "version": config.get(section, "version", fallback="").strip(),
                 "url": config.get(section, "url", fallback="").strip(),
+                "icon_light": config.get(section, "icon_light", fallback="").strip(),
+                "icon_dark": config.get(section, "icon_dark", fallback="").strip(),
             })
     return apps
 
@@ -294,6 +301,14 @@ def apply_release(session: requests.Session, owner: str, repo: str,
                 copy2(item, dest)
 
 
+def fetch_repo_file(session: requests.Session, owner: str, repo: str, path: str, dest: Path,
+                    ref: str = "main") -> None:
+    """Download ONE file from a repo (no clone) via the Contents API. Works for PRIVATE repos
+    with a token; fetches just this file so an icon can be shown before the app is installed."""
+    url = f"https://api.github.com/repos/{owner}/{repo}/contents/{quote(path)}?ref={ref}"
+    _download(session, url, dest, headers={"Accept": "application/vnd.github.raw"})
+
+
 # ── Platform helpers ──────────────────────────────────────────────────────────────────
 def launcher_candidates(app_name: str) -> list[Path]:
     """Per-OS launchers to try when opening a managed app."""
@@ -348,23 +363,78 @@ class UpdateManagerApp:
         self.session = github_session(self.token)
         self.apps = parse_apps(self.config)
         self.rows: dict[str, dict] = {}
+        self._spin_running = False
+        # Colour used to make the list scrollbar's handle invisible without removing it (so its
+        # column width stays reserved and nothing shifts). It matches the window background.
+        try:
+            self._sb_hidden = ThemeManager.theme["CTk"]["fg_color"]
+        except Exception:  # noqa: BLE001
+            self._sb_hidden = ("gray92", "gray14")
         self.app_title = self.config.get("UpdateManager", "title", fallback=APP_TITLE).strip() or APP_TITLE
         self.heading = self.config.get("UpdateManager", "heading", fallback=APP_HEADING).strip() or APP_HEADING
 
-        self.root = CTk()
+        # UI scaling. "auto"/blank leaves customtkinter's automatic DPI scaling (which can read 1.0
+        # on some Linux/HiDPI sessions, making everything tiny on a 4K screen). Set a number like
+        # 1.5 or 2.0 to enlarge widgets + window. Applied before the window is created.
+        self._apply_ui_scale(self.config.get("UpdateManager", "ui_scale", fallback="").strip())
+
+        # Windows groups pythonw under Python's taskbar icon. Give the process its own
+        # AppUserModelID (before the window exists) so the taskbar uses OUR window icon.
+        if IS_WINDOWS:
+            try:
+                import ctypes
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Ariel-MN.UpdateManager")
+            except Exception:  # noqa: BLE001
+                pass
+
+        # className sets the X11 WM_CLASS (-> "Updatemanager"); the .desktop's StartupWMClass
+        # matches it so the Linux taskbar shows our icon and groups with the launcher.
+        self.root = CTk(className="updatemanager")
         self.root.title(f"{self.app_title} {__version__}")
         self.root.minsize(820, 420)
-        if IS_WINDOWS and (IMG_DIR / "Favicon.ico").is_file():
-            try:
-                self.root.iconbitmap(str(IMG_DIR / "Favicon.ico"))
-            except Exception:  # noqa: BLE001 — non-fatal cosmetic
-                pass
+        self._set_window_icon()
 
         self._build_header()
         self._build_list()
 
         # After the window is shown: self-update prompt, then refresh managed-app states.
         self.root.after(250, self._startup_checks)
+
+    def _set_window_icon(self) -> None:
+        """Give the window the app icon: Favicon.ico on Windows, Logo.png elsewhere; on macOS
+        also set the Dock icon via PyObjC (if available)."""
+        ico = IMG_DIR / "Favicon.ico"
+        png = IMG_DIR / "Logo.png"
+        try:
+            if IS_WINDOWS and ico.is_file():
+                self.root.iconbitmap(str(ico))
+            elif png.is_file():
+                from tkinter import PhotoImage
+                self._icon_img = PhotoImage(file=str(png))  # keep a reference alive
+                self.root.iconphoto(True, self._icon_img)
+        except Exception:  # noqa: BLE001 — non-fatal cosmetic
+            pass
+        if IS_MAC and png.is_file():
+            try:  # the Dock icon of a plain script is Python's unless we set it (needs pyobjc)
+                from AppKit import NSApplication, NSImage
+                image = NSImage.alloc().initByReferencingFile_(str(png))
+                NSApplication.sharedApplication().setApplicationIconImage_(image)
+            except Exception:  # noqa: BLE001 — pyobjc missing or unavailable: keep default icon
+                pass
+
+    @staticmethod
+    def _apply_ui_scale(raw: str) -> None:
+        """Apply a manual UI scale from config ("auto"/blank → leave automatic DPI scaling)."""
+        value = raw.lower()
+        if not value or value == "auto":
+            return
+        try:
+            scale = float(value.replace(",", "."))
+        except ValueError:
+            return
+        if scale > 0:
+            set_widget_scaling(scale)
+            set_window_scaling(scale)
 
     # -- construction ------------------------------------------------------------------
     def _img(self, name: str, size: tuple[int, int]) -> CTkImage | None:
@@ -397,19 +467,26 @@ class UpdateManagerApp:
                   command=self._get_all_updates).pack(pady=(0, 20), padx=20, side="right")
 
     def _build_list(self) -> None:
+        # Scrollbar starts "hidden" (handle painted the window-bg colour), but it stays in place so
+        # its column width is always reserved — showing it later never shifts the content.
         center = CTkScrollableFrame(master=self.root, fg_color="transparent", border_color=SECONDARY,
                                     border_width=1, orientation="vertical",
-                                    scrollbar_button_color=SECONDARY, scrollbar_button_hover_color=QUATERNARY)
+                                    scrollbar_button_color=self._sb_hidden, scrollbar_button_hover_color=self._sb_hidden)
         center.pack(expand=True, fill="both", pady=(0, 5), padx=5)
+        self._list_frame = center
+        try:  # recompute scrollbar visibility whenever the viewport resizes
+            center._parent_canvas.bind("<Configure>", lambda _e: self._update_scrollbar(), add="+")
+        except Exception:  # noqa: BLE001
+            pass
 
         for app in self.apps:
             name = app["name"]
             frame = CTkFrame(master=center, fg_color=SECONDARY)
             frame.pack(expand=False, fill="x", pady=2, padx=2)
 
-            icon = self._img(name, (40, 40))
-            CTkLabel(master=frame, text="" if icon else "App", image=icon, fg_color=TERTIARY2,
-                     corner_radius=8, width=50, height=50, font=FONT_BODY).pack(pady=10, padx=15, side="left")
+            icon_label = CTkLabel(master=frame, text="", image=None, fg_color=TERTIARY2,
+                                  corner_radius=8, width=50, height=50, font=FONT_SUBTITLE)
+            icon_label.pack(pady=10, padx=15, side="left")
 
             btn = CTkButton(master=frame, text="…", corner_radius=32, text_color=PRIMARY,
                             border_color=PRIMARY, fg_color="transparent", border_width=1,
@@ -422,7 +499,172 @@ class UpdateManagerApp:
             ver = CTkLabel(master=frame, text=app["version"] or "—", font=FONT_BODY)
             ver.pack(pady=(0, 5), padx=(0, 15), anchor="nw")
 
-            self.rows[app["section"]] = {"app": app, "btn": btn, "msg": msg, "ver": ver}
+            row = {"app": app, "btn": btn, "msg": msg, "ver": ver, "_icon_label": icon_label}
+            self.rows[app["section"]] = row
+            self._init_app_icon(row)
+
+        self.root.after(150, self._update_scrollbar)
+
+    def _update_scrollbar(self) -> None:
+        """Make the list scrollbar's handle visible only when the content overflows. The
+        scrollbar keeps its reserved column width either way, so nothing shifts around it."""
+        frame = getattr(self, "_list_frame", None)
+        if frame is None:
+            return
+        try:
+            canvas = frame._parent_canvas
+            bbox = canvas.bbox("all")
+            if bbox is None:
+                return
+            overflow = (bbox[3] - bbox[1]) > canvas.winfo_height() + 1
+            if overflow:   # original (subtle) scrollbar style
+                frame._scrollbar.configure(button_color=SECONDARY, button_hover_color=QUATERNARY)
+            else:
+                frame._scrollbar.configure(button_color=self._sb_hidden, button_hover_color=self._sb_hidden)
+        except Exception:  # noqa: BLE001
+            pass
+
+    # -- app icons (downloaded on demand; img/ fills itself) ---------------------------
+    @staticmethod
+    def _resolve_specs(app: dict) -> tuple[str, str]:
+        """Light/dark icon specs after the single-colour rule: if only one is given, it is
+        used for both themes."""
+        light, dark = app.get("icon_light", ""), app.get("icon_dark", "")
+        if light and not dark:
+            dark = light
+        if dark and not light:
+            light = dark
+        return light, dark
+
+    @staticmethod
+    def _cache_path(name: str, theme: str, spec: str) -> Path:
+        tag = hashlib.sha1(spec.encode("utf-8")).hexdigest()[:10]
+        return ICON_CACHE / f"{name}_{theme}_{tag}.png"
+
+    def _image_path(self, app: dict, theme: str, spec: str) -> Path | None:
+        """Where the image for this theme currently is, or None if not available yet."""
+        if spec:
+            p = self._cache_path(app["name"], theme, spec)
+            return p if p.is_file() else None
+        local = IMG_DIR / f"{app['name']}_{theme}.png"   # hand-placed fallback
+        return local if local.is_file() else None
+
+    def _assemble_icon(self, app: dict) -> CTkImage | None:
+        light, dark = self._resolve_specs(app)
+        lp = self._image_path(app, "L", light)
+        dp = self._image_path(app, "D", dark)
+        if lp and not dp:
+            dp = lp
+        if dp and not lp:
+            lp = dp
+        if not lp:
+            return None
+        try:
+            return CTkImage(light_image=Image.open(lp), dark_image=Image.open(dp), size=(40, 40))
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _init_app_icon(self, row: dict) -> None:
+        app = row["app"]
+        light, dark = self._resolve_specs(app)
+        needed = []
+        if self.owner:
+            for theme, spec in (("L", light), ("D", dark)):
+                if spec and not self._cache_path(app["name"], theme, spec).is_file():
+                    needed.append((theme, spec))
+        if needed:
+            self._start_spinner(row)
+            threading.Thread(target=self._icon_worker, args=(row, needed), daemon=True).start()
+        else:
+            self._apply_icon(row, self._assemble_icon(app))
+
+    def _icon_worker(self, row: dict, needed: list[tuple[str, str]]) -> None:
+        app = row["app"]
+        try:
+            ICON_CACHE.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+        for theme, spec in needed:
+            dest = self._cache_path(app["name"], theme, spec)
+            try:
+                if spec.startswith(("http://", "https://")):
+                    _download(self.session, spec, dest)
+                else:
+                    fetch_repo_file(self.session, self.owner, app["name"], spec, dest)
+                Image.open(dest).verify()           # reject non-images
+            except Exception:                        # noqa: BLE001
+                try:
+                    dest.unlink()
+                except OSError:
+                    pass
+        self.root.after(0, self._finish_icon, row)
+
+    def _finish_icon(self, row: dict) -> None:
+        row["_spinning"] = False
+        self._apply_icon(row, self._assemble_icon(row["app"]))
+
+    def _apply_icon(self, row: dict, image: CTkImage | None) -> None:
+        label = row["_icon_label"]
+        try:
+            if image is not None:
+                row["_icon_ctk"] = image          # keep a reference alive
+                label.configure(image=image, text="")
+            else:                                  # placeholder: first letter
+                label.configure(image=None, text=(row["app"]["name"][:1] or "?").upper())
+        except Exception:  # noqa: BLE001
+            pass
+
+    @staticmethod
+    def _hex_rgb(value: str) -> tuple[int, int, int]:
+        value = value.lstrip("#")
+        return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
+
+    def _build_spinner_frames(self) -> None:
+        """Pre-render a rotating ring whose tail fades out (a spinning arc with a gradient tail),
+        as a set of CTkImage frames for the current theme."""
+        mode = get_appearance_mode()
+        r, g, b = self._hex_rgb(PRIMARY[1] if mode == "Dark" else PRIMARY[0])
+        size, frames_n, segments = 48, 12, 72
+        box = [6, 6, size - 6, size - 6]
+        seg = 360 / segments
+        frames = []
+        for f in range(frames_n):
+            im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            d = ImageDraw.Draw(im)
+            head = f * (360 / frames_n)         # advance the other way (reverse spin direction)
+            for s in range(segments):
+                a = s * seg
+                rel = (head - a) % 360          # angular distance behind the head (tail)
+                alpha = int(255 * max(0.0, 1.0 - rel / 300.0))   # bright head -> transparent tail
+                if alpha <= 0:
+                    continue
+                d.arc(box, a, a + seg + 1.5, fill=(r, g, b, alpha), width=5)
+            frames.append(CTkImage(light_image=im, dark_image=im, size=(26, 26)))
+        self._spin_frames = frames
+        self._spin_mode = mode
+
+    def _start_spinner(self, row: dict) -> None:
+        row["_spinning"] = True
+        if not self._spin_running:
+            self._spin_running = True
+            self._spin_i = 0
+            self._tick_spinner()
+
+    def _tick_spinner(self) -> None:
+        active = [r for r in self.rows.values() if r.get("_spinning")]
+        if not active:
+            self._spin_running = False
+            return
+        if getattr(self, "_spin_frames", None) is None or self._spin_mode != get_appearance_mode():
+            self._build_spinner_frames()
+        frame = self._spin_frames[self._spin_i % len(self._spin_frames)]
+        self._spin_i += 1
+        for r in active:
+            try:
+                r["_icon_label"].configure(image=frame, text="")
+            except Exception:  # noqa: BLE001
+                pass
+        self.root.after(90, self._tick_spinner)
 
     # -- behaviour ---------------------------------------------------------------------
     def _toggle_theme(self) -> None:

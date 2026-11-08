@@ -3,15 +3,21 @@
 #  Update Manager launcher  --  DEDICATED TO: macOS  (double-clickable .command)
 #  First time only, make it executable so Finder can run it:
 #     chmod +x UpdateManager.command
-#  Uses the shared virtualenv at <Crypto>/env if present, else system python3.
+#  Uses a virtualenv if present: the repo-local env/ first, then a shared
+#  <parent>/env; otherwise the system python3.
 # =============================================================================
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"          # launchers/macos
 APP_DIR="$(cd "$HERE/../.." && pwd)"           # UpdateManager/
 
-if [ -f "$APP_DIR/../env/bin/activate" ]; then
-  # shellcheck disable=SC1091
-  source "$APP_DIR/../env/bin/activate"
-fi
+PY="python3"
+for VENV in "$APP_DIR/env" "$APP_DIR/../env"; do
+  if [ -f "$VENV/bin/activate" ]; then
+    # shellcheck disable=SC1091
+    source "$VENV/bin/activate"
+    PY="python"
+    break
+  fi
+done
 
-exec python3 "$APP_DIR/updatemanager.py"
+exec "$PY" "$APP_DIR/updatemanager.py"

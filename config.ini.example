@@ -13,12 +13,26 @@ username = your-github-username
 title = Update Manager
 # Heading shown at the top inside the window.
 heading = Application Library
+# UI scale. "auto" (or blank) uses automatic DPI scaling. On some Linux/HiDPI sessions that
+# reads as 1.0 and the window looks tiny on a 4K screen; set a number (e.g. 1.5 or 2.0) to enlarge.
+ui_scale = auto
 # Ask to self-update on startup when a newer release of Update Manager exists.
 check_on_startup = true
 
 # One [AppN] section per managed app. "name" must equal the GitHub repo name.
 # Leave "version" empty for an app that is not installed yet (the button shows "Install").
+#
+# Icons (optional) are downloaded automatically from the app's repo (main branch) and shown
+# even before the app is installed, so img/ fills itself — no manual copying:
+#   icon_light / icon_dark = a path INSIDE the app's repo (or a full URL).
+#   - Give both for a theme-aware icon (light + dark).
+#   - Give only ONE (leave the other blank) and that single icon is used in ALL themes
+#     (for single-colour icons).
+#   - Give neither and it falls back to a hand-placed img/<name>_L.png / _D.png, else a
+#     placeholder. While downloading, an animated spinner is shown.
 [App1]
 name = ExampleApp
 version =
 url = https://github.com/your-github-username/ExampleApp/releases/latest
+icon_light = icon.png
+icon_dark =

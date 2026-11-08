@@ -1,12 +1,15 @@
-# Secrets — the GitHub token lives in the per-user config dir, never in the repo.
+# Secrets — the GitHub token lives in secrets.ini (project folder), never committed.
 secrets.ini
+
+# Downloaded app icons (img/ fills itself at runtime).
+img/.cache/
 
 # Python
 __pycache__/
 *.py[cod]
 *.egg-info/
 
-# Virtual environments (the shared env lives OUTSIDE the repo)
+# Virtual environment (created inside the app by the installers).
 env/
 venv/
 .venv/
