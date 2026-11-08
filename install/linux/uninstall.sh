@@ -10,8 +10,10 @@ APP_DIR="$(cd "$(dirname "$0")/../.." && pwd)"   # UpdateManager/
 cd "$APP_DIR"
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
-say "Removing application-menu entries ..."
+say "Removing menu entry ..."
 APPS_DIR="$HOME/.local/share/applications"
+# Current installs create only UpdateManager.desktop; the "(Debug)" one is a legacy entry from
+# older versions and is removed too, so upgrading users are left clean.
 rm -f "$APPS_DIR/UpdateManager.desktop" "$APPS_DIR/UpdateManager-Debug.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true
 
