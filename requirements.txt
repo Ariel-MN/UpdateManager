@@ -1,11 +1,6 @@
-# Pinned to the latest versions tested together with this code. customtkinter 6.0.0 is a
-# major release and was verified by building the whole GUI against it.
 customtkinter==6.0.0
-CTkMessagebox==2.7
 requests==2.34.2
-# Pillow ships C extensions, so an exact old pin forces a from-source build on newer Python
-# or on arches without a prebuilt wheel (this failed on the Raspberry Pi). A floor only lets
-# pip pick a version with a wheel for the current Python; tested up to Pillow 13.
+# Floor, not an exact pin, so pip can choose a version with a prebuilt wheel for the current Python.
 Pillow>=10.3.0
 # macOS only: lets the app set its Dock icon (the import is guarded, so it's optional).
 pyobjc-framework-Cocoa>=10.0 ; sys_platform == "darwin"

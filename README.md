@@ -52,10 +52,17 @@ username = Ariel-MN
 title = Update Manager
 # Heading shown at the top inside the window.
 heading = Application Library
-# UI scale: "auto"/blank = automatic DPI scaling; a number (1.5, 2.0) enlarges on HiDPI/4K.
+# UI scale: "auto"/blank = automatic (Linux reads the desktop scale from Xft.dpi); "off" = 1.0;
+# a number (1.5, 2.0) forces that scale.
 ui_scale = auto
 # Self-update check on startup.
 check_on_startup = true
+# Theme: system / light / dark (the header theme button switches it and saves the choice).
+appearance = system
+# Re-check every app every N minutes while the window is open (0 = never).
+recheck_minutes = 30
+# Desktop notification when updates are found while the window is in the background.
+notifications = true
 
 # One [AppN] section per app. "name" must equal the GitHub repo name.
 # Leave "version" empty for an app not installed yet (the button shows "Install").
@@ -67,6 +74,118 @@ url = https://github.com/Ariel-MN/AutoClicker/releases/latest
 
 Add one `[AppN]` section per app. Managed apps are expected to live **next to** the
 `UpdateManager` folder (e.g. `…/Crypto/UpdateManager`, `…/Crypto/AutoClicker`).
+
+### Using the window
+
+- **Get updates** updates every app with a known update; if none is known it checks GitHub
+  again first and updates whatever turns out to be outdated. It shows the pending count
+  ("Get updates (2)"), and "Checking…" / "Updating…" while work is in progress; the window
+  title also shows how many updates are available.
+- Downloads report progress in the app's row ("Updating… 45 %", or MB when the size is unknown).
+- **Open** shows "Launching…" for a moment and ignores repeat clicks meanwhile, so a slow app
+  is not started twice.
+- Status colours: accent = update available / in progress, red = "Couldn't check" (offline,
+  rate limit, GitHub error — the app's button still works), grey = the repo has no releases.
+- Click a red **"Couldn't check ⓘ"** to see why (offline, rate limit, HTTP error…).
+- Every app is re-checked automatically (every 30 minutes by default) while the window stays
+  open. If updates show up while the window is in the background or minimised, a desktop
+  notification says so once per version (Linux `notify-send`, macOS Notification Center; on
+  Windows the taskbar button flashes).
+- **Settings** (gear button, **Ctrl+,**): GitHub username, re-check interval, notifications,
+  startup self-update check and theme. They are saved in `config.ini`. The token is deliberately
+  not editable there (see *Token / security*); `ui_scale` stays a `config.ini` option.
+- **Search** (field at the top right; click it or press **Ctrl+F**) filters the list by app name;
+  **Esc** clears it. It does not take the keyboard focus when the window opens.
+- While an app downloads, its button becomes **Cancel**. Everything is downloaded to a temp
+  folder first and copied only at the end, so cancelling (or a failed download) leaves the
+  installed version untouched.
+- The **⋯** button of each row (or a right-click on the row) opens: Open, Open folder,
+  What's new (when an update is available), Check again and **Uninstall…**.
+- **Uninstall** asks first, showing exactly what will happen. It runs the app's own uninstaller
+  if it ships one (to remove menu entries / `.desktop` files, shortcuts…), then deletes the app
+  folder and clears its version in `config.ini`. See *Uninstalling an app* below for exactly
+  which files are run.
+- An app whose version is in `config.ini` but whose folder is missing (deleted by hand) is
+  shown as not installed, with an **Install** button.
+- Closing the window while an install/update is running asks first ("Wait" / "Close"), since
+  closing mid-copy can leave that app half-updated.
+- With no GitHub username the rows say so (click the text to open Settings); with no `[AppN]`
+  sections the window says what to add to `config.ini`.
+- Click **"Update available (vX)"** to read that version's release notes, with **Update now**
+  and **Open on GitHub** buttons.
+- Launching Update Manager while it is already open brings the existing window to the front
+  (also when it is minimised) instead of starting a second copy — on every OS.
+- Keyboard: **F5** or **Ctrl+R** re-checks every app; **Ctrl+F** search; **Ctrl+,** settings;
+  **Ctrl+Q** / **Ctrl+W** closes (Command instead of Ctrl on macOS).
+- An app given a single grey icon gets it inverted automatically on the theme where it would
+  not be visible (e.g. a white glyph in the light theme). Coloured icons are never changed.
+
+### Uninstalling an app
+
+**Uninstall…** (in the **⋯** menu of an installed app) does three things, after a confirmation
+that lists them:
+
+1. Runs the app's own uninstaller, if one is found (see below). Use it to undo what the app's
+   installer did outside its folder: menu entries / `.desktop` files, shortcuts, services…
+2. Deletes the app folder (`<folder next to UpdateManager>/<AppName>`).
+3. Clears the app's `version` in `config.ini`, so it shows **Install** again.
+
+**Which file is run.** Update Manager looks inside the app folder, and in its subfolders up to
+**3 levels** below it (e.g. `install/linux/uninstall.sh`; not `a/b/c/d/uninstall.sh`), for a
+file whose name (without extension) is one of these, in any letter case:
+
+| Name | Examples that match | Examples that do **not** match |
+|---|---|---|
+| anything starting with `uninstal` | `uninstal`, `uninstall`, `Uninstall`, `uninstaler`, `uninstaller`, `uninstallapp`, `uninstall-linux`, `Uninstall MyApp` | `uninst`, `deinstall`, `my-uninstall` |
+| `unins` + optional digits (Inno Setup uninstallers) | `unins`, `unins000` | `uninsx` |
+| `remove` | `remove` | `removeall` |
+| `cleanup` | `cleanup` | `clean` |
+| `unins…`, `remove` or `cleanup` + a separator (`-`, `_`, `.`, space…) + anything | `unins000-x`, `remove-app`, `cleanup_all` | |
+
+…with an extension that **this** operating system can run:
+
+| OS | Extensions (in order of preference) |
+|---|---|
+| Windows | `.exe`, `.ps1`, `.bat`, `.cmd`, `.vbs`, `.py`, `.pyw` |
+| macOS | `.command`, `.sh`, `.py`, or no extension if the file is executable |
+| Linux | `.sh`, `.py`, or no extension if the file is executable |
+
+Where it looks:
+
+- **Folders named after an operating system** are used only on that system: `linux`, `ubuntu`,
+  `debian`, `raspberrypi` (Linux); `macos`, `mac`, `osx`, `darwin` (macOS); `windows`, `win`,
+  `win32`, `win64` (Windows). So `install/linux/uninstall.sh` runs on Linux and
+  `install/windows/uninstall.ps1` on Windows, never the other way round.
+- **Never searched:** `env`, `venv`, `.venv`, `.git`, `node_modules`, `__pycache__`,
+  `site-packages`, `img`, `assets`, `docs`, `test`, `tests`, and symlinked folders.
+- **If several files match, only ONE is run** — not the first one found, but the best one by
+  these rules, in order:
+  1. one inside a folder for this OS (e.g. `install/linux/`) wins over one elsewhere;
+  2. then the one nearest to the app folder (fewest levels down);
+  3. then the extension order in the table above (on Linux: `.sh`, then `.py`, then an
+     executable without extension);
+  4. if still tied, the first by path in alphabetical order.
+
+  Example on Linux, with `uninstall.sh` in the app folder, `install/linux/uninstall.sh` and
+  `scripts/uninstal.py`: only `install/linux/uninstall.sh` runs. The confirmation shown before
+  uninstalling always names the file that will run. Running several would repeat the same
+  work, since apps often ship one uninstaller per OS or per language.
+
+How it runs:
+
+- From the app folder, with no console window and no input (it must not ask questions), with the
+  environment variable `UPDATEMANAGER_UNINSTALL=1` set, and for at most 10 minutes.
+- `.sh` / `.command` with `bash`; `.ps1` with
+  `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File`; `.bat` / `.cmd` with
+  `cmd /c`; `.vbs` with `cscript //nologo`; `.py` / `.pyw` with the app's own virtualenv
+  (`env`, `venv` or `.venv` in the app folder, or the shared `env` next to the apps), otherwise
+  with Update Manager's Python; `.exe` and extension-less files directly.
+- If it exits with an error, you see its last lines of output and choose whether to delete the
+  folder anyway or keep it.
+
+Safety: only a folder **directly next to** Update Manager can be deleted, never Update Manager
+itself; a symlinked app folder only loses the link; read-only files (e.g. Windows, `.git`
+objects) are made writable so they can be removed.
 
 ## Token / security
 
@@ -164,7 +283,8 @@ pip install -r requirements.txt
 
 Optional double-click launchers live in `launchers/`, one set per OS, each labelled with
 its target system. They auto-activate the `env/` virtualenv (repo-local first, then a shared
-`../env`). See `launchers/README`.
+`../env`). See `launchers/README`. Duplicate launches are handled by the app itself (the
+running window comes to the front), so the launchers no longer need their own guard.
 
 ## Uninstall
 
@@ -182,8 +302,10 @@ To remove everything afterwards, delete the folder.
 ## Troubleshooting
 
 - **Window too small / unreadable on a 4K screen:** set `ui_scale` under `[UpdateManager]` in
-  `config.ini` to a number (e.g. `ui_scale = 2.0`). Automatic DPI scaling reads as 1.0 on some
-  Linux/HiDPI sessions, which makes everything tiny.
+  `config.ini` to a number (e.g. `ui_scale = 2.0`). On Linux `auto` uses `Xft.dpi` (run
+  `xrdb -query | grep dpi`); if your session does not publish it, set the number by hand.
+- **Window size:** only the size is remembered (`window_size`, in unscaled units); the position
+  is left to the window manager, which centres the window on GNOME.
 - **`.desktop` flashes a terminal and shows no window:** the app crashed because its Python has no
   dependencies. Run the installer so a `env/` exists next to the app; the launchers use it.
 

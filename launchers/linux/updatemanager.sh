@@ -8,10 +8,8 @@ set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"          # launchers/linux
 APP_DIR="$(cd "$HERE/../.." && pwd)"           # UpdateManager/
 
-# Prevent duplicate instances.
-if pgrep -f "[u]pdatemanager.py" >/dev/null 2>&1; then
-  exit 0
-fi
+# Duplicate instances are handled by updatemanager.py itself: a second launch brings the
+# running window to the front and exits (same behaviour on every OS).
 
 # Activate a virtualenv if present (repo-local env/ first, then a shared ../env).
 PY="python3"

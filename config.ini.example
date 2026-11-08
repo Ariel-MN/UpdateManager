@@ -13,11 +13,22 @@ username = your-github-username
 title = Update Manager
 # Heading shown at the top inside the window.
 heading = Application Library
-# UI scale. "auto" (or blank) uses automatic DPI scaling. On some Linux/HiDPI sessions that
-# reads as 1.0 and the window looks tiny on a 4K screen; set a number (e.g. 1.5 or 2.0) to enlarge.
+# UI scale:
+#   auto / blank -> automatic. On LINUX the desktop scale is read from Xft.dpi (e.g. 192 = 2.0 on
+#                   GNOME/Wayland at 150 %) and applied to widgets, fonts and window size.
+#                   On Windows/macOS customtkinter's own auto-DPI is used.
+#   off          -> no scaling at all (1.0).
+#   a number     -> force that scale (1.5, 2.0) on any OS.
 ui_scale = auto
 # Ask to self-update on startup when a newer release of Update Manager exists.
 check_on_startup = true
+# Theme: system (follow the desktop), light or dark. The theme button in the header
+# switches it and remembers the choice here.
+appearance = system
+# Re-check every app every N minutes while the window is open (0 = never). Also in Settings.
+recheck_minutes = 30
+# Desktop notification when updates are found while the window is in the background.
+notifications = true
 
 # One [AppN] section per managed app. "name" must equal the GitHub repo name.
 # Leave "version" empty for an app that is not installed yet (the button shows "Install").
