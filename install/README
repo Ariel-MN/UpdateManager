@@ -7,15 +7,23 @@ Each script is labelled in its header with the OS it is dedicated to.
 
   linux/install.sh         Linux / Raspberry Pi. If a dependency (usually Pillow)
                            can't install from PyPI, it falls back to the prebuilt
-                           Pillow from the system packages (needs sudo).
-                           Run:  chmod +x install.sh && ./install.sh
+                           Pillow from the system packages (needs sudo). It also adds
+                           "Update Manager" to the applications menu.
+                           Run:  chmod +x install.sh && ./install.sh   (or: bash install.sh)
 
   macos/install.command    macOS.  Run once: chmod +x install.command, then double-click.
 
   windows/install.ps1      Windows.
                            Run:  powershell -ExecutionPolicy Bypass -File install.ps1
 
-After installing, launch from launchers/<os>/ (see launchers/README), or run
-`python updatemanager.py` directly inside the activated env.
+Uninstallers (remove menu entries / Desktop shortcut, the env/ and caches; keep your
+source, config.ini and secrets.ini):
+
+  linux/uninstall.sh       bash install/linux/uninstall.sh
+  macos/uninstall.command  bash install/macos/uninstall.command
+  windows/uninstall.ps1    powershell -ExecutionPolicy Bypass -File install\windows\uninstall.ps1
+
+After installing, launch from launchers/<os>/ (see launchers/README), from the Linux
+applications menu, or run `python updatemanager.py` inside the activated env.
 
 The env/ folder is gitignored and never committed.

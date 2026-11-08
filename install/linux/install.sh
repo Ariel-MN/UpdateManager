@@ -12,7 +12,7 @@ cd "$APP_DIR"
 
 # A .zip download or a copy from Windows can drop the executable bit. Restore it for the
 # installer itself and the launchers, so running via `bash install.sh` is always enough.
-chmod +x install/linux/install.sh launchers/linux/*.sh 2>/dev/null || true
+chmod +x install/linux/install.sh install/linux/uninstall.sh launchers/linux/*.sh 2>/dev/null || true
 
 say()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[33m%s\033[0m\n' "$*"; }
@@ -66,7 +66,7 @@ if ! pip install -r requirements.txt; then
   # shellcheck disable=SC1091
   source env/bin/activate
   python -m pip install --upgrade pip wheel
-  pip install customtkinter==5.2.2 CTkMessagebox==2.7 requests==2.32.3
+  pip install -r requirements.txt   # Pillow already satisfied by the system (site-packages)
 fi
 
 # --- smoke test: everything the app needs must import ------------------------
@@ -76,5 +76,22 @@ import customtkinter, requests, PIL, tkinter  # noqa: F401
 print("  imports OK  |  Pillow", PIL.__version__, " requests", requests.__version__)
 PY
 
-say "Done. Launch with:  ./launchers/linux/updatemanager.sh   (or: python updatemanager.py)"
-echo "     Menu entry:   edit launchers/linux/UpdateManager.desktop and copy it to ~/.local/share/applications"
+# --- install application-menu entries with the real paths --------------------
+# The launchers/linux/*.desktop files are TEMPLATES (they contain {INSTALL_DIR} and would not
+# work if launched directly). Here we generate working copies with the real path into the
+# user's applications folder, executable, so "Update Manager" shows up in the menu (GUI only).
+say "Installing menu entries ..."
+APPS_DIR="$HOME/.local/share/applications"
+mkdir -p "$APPS_DIR"
+for tpl in launchers/linux/UpdateManager.desktop launchers/linux/UpdateManager-Debug.desktop; do
+  [ -f "$tpl" ] || continue
+  out="$APPS_DIR/$(basename "$tpl")"
+  sed "s#{INSTALL_DIR}#$APP_DIR#g" "$tpl" > "$out"
+  chmod +x "$out"
+done
+chmod +x launchers/linux/*.desktop 2>/dev/null || true   # also mark the in-folder templates
+command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true
+
+say "Done."
+echo "  Menu:   search 'Update Manager' in your applications menu (GUI only, with icon)."
+echo "  Or run: ./launchers/linux/updatemanager.sh   (or: python updatemanager.py)"

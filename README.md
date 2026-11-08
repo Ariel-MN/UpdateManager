@@ -133,13 +133,19 @@ everything; see `install/README`):
 
 | OS | Command |
 |----|---------|
-| Linux / Raspberry Pi | `bash install/linux/install.sh` |
-| macOS | `bash install/macos/install.command` |
+| Linux / Raspberry Pi | `chmod +x install/linux/install.sh && ./install/linux/install.sh` |
+| macOS | `chmod +x install/macos/install.command && ./install/macos/install.command` |
 | Windows | `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1` |
 
-Running them with `bash` needs no execute bit. A fresh `git clone` already keeps the scripts
-executable; a `.zip` download or a copy from Windows can drop that bit, but the installer
-restores it (for itself and the launchers) on first run.
+The one-liner marks the installer executable (so it can be double-clicked next time) and runs it.
+If you can't set the bit (e.g. a file on an exFAT USB), run it with `bash install/linux/install.sh`
+instead — no execute bit needed. The installer then also restores `+x` on the launchers.
+
+On **Linux**, the installer **adds "Update Manager" to your applications menu**: it writes working
+`.desktop` entries (with the real install path, GUI-only, with icon) into
+`~/.local/share/applications`, so it shows up in the menu right away. The `launchers/linux/*.desktop`
+files in the repo are only templates (they contain `{INSTALL_DIR}`) — launch from the menu, not
+from those files directly.
 
 Or manually:
 
@@ -159,6 +165,19 @@ pip install -r requirements.txt
 Optional double-click launchers live in `launchers/`, one set per OS, each labelled with
 its target system. They auto-activate the `env/` virtualenv (repo-local first, then a shared
 `../env`). See `launchers/README`.
+
+## Uninstall
+
+Removes what the installer created (menu entries on Linux, Desktop shortcut on Windows, the `env/`
+virtualenv and caches). Your source files, `config.ini` and `secrets.ini` are kept.
+
+| OS | Command |
+|----|---------|
+| Linux / Raspberry Pi | `bash install/linux/uninstall.sh` |
+| macOS | `bash install/macos/uninstall.command` |
+| Windows | `powershell -ExecutionPolicy Bypass -File install\windows\uninstall.ps1` |
+
+To remove everything afterwards, delete the folder.
 
 ## Troubleshooting
 
